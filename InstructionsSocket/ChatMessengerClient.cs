@@ -1,85 +1,153 @@
-using System;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json;
+using ClientBlockchain.Entities;
+using ClientBlockchain.SystemOperation;
+using ClientBlockChain.Entities;
 
 namespace ClientBlockChain.InstructionsSocket
 {
     public class ChatMessengerClient
     {
-        public static async Task StartChatAsync(Socket clientSocket)
+        private readonly Socket _workSocket;
+        private readonly CancellationTokenSource _cancellationTokenSource;
+        private static readonly SslStream? _sslStream;
+        public event Action<Socket>? StatusClientConnected;
+        public event Action<ClientMine>? OnClientInfoReceived;
+        public event Action<string>? OnMessageReceived;
+        private const int CheckInterval = 20000;
+
+        public ChatMessengerClient(Socket socket)
+        {
+            _workSocket = socket;
+            _cancellationTokenSource = new CancellationTokenSource();
+        }
+
+        public async Task StartChatAsync()
         {
             try
             {
-                // Inicia a escuta contínua em uma thread separada
-                Task receiveTask = Task.Run(() => ListenForMessagesAsync(clientSocket));
+                _ = MonitorConnectionAsync(_cancellationTokenSource.Token);
 
-                while (clientSocket.Connected)
-                {
-                    await SendMessageAsync(clientSocket);
-                }
+                await SendClientInfoAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Erro no chat: {ex.Message}");
             }
-            // finally
-            // {
-            //     clientSocket.Close();
-            //     Console.WriteLine("Conexão encerrada.");
-            // }
         }
 
-        private static async Task ListenForMessagesAsync(Socket clientSocket)
+        private async Task MonitorConnectionAsync(CancellationToken cancellationToken)
         {
-            try
+            while (!cancellationToken.IsCancellationRequested && _workSocket.Connected)
             {
-                while (clientSocket.Connected)
+                try
                 {
-                    byte[] buffer = new byte[1024];
-                    Console.Write("> ");
-                    int bytesRead = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
-
-                    if (bytesRead > 0)
+                    await SendObjectAsync(new object
                     {
-                        string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Console.WriteLine($"[Servidor]: {message}");
-                        continue;
-                    }
+                    });
+                    await ReceiveMessageAsync();
+                }
+                catch (SocketException)
+                {
+                    Console.WriteLine("Conexão perdida. Tentando reconectar...");
+                    StatusClientConnected?.Invoke(_workSocket);
                     break;
                 }
             }
-            catch (SocketException)
+        }
+
+        private async Task ReceiveMessageAsync()
+        {
+
+            byte[] lengthBuffer = new byte[sizeof(int)];
+            var receiveTask = _workSocket.ReceiveAsync(lengthBuffer, SocketFlags.None);
+
+            var timeoutTask = Task.Delay(CheckInterval, _cancellationTokenSource.Token);
+
+            var completedTask = await Task.WhenAny(receiveTask, timeoutTask);
+
+            if (completedTask == timeoutTask) throw new SocketException();
+
+            int bytesRead = await receiveTask;
+
+            if (bytesRead == 0) throw new SocketException();
+
+            int messageLength = BitConverter.ToInt32(lengthBuffer, 0);
+            byte[] messageBuffer = new byte[messageLength];
+
+            // Recebe o objeto completo
+            receiveTask = _workSocket.ReceiveAsync(messageBuffer, SocketFlags.None);
+
+            completedTask = await Task.WhenAny(receiveTask, timeoutTask);
+
+            if (completedTask == timeoutTask) throw new SocketException();
+
+            bytesRead = await receiveTask;
+
+            if (bytesRead > 0)
             {
-                Console.WriteLine("Conexão com o servidor perdida.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao receber mensagem: {ex.Message}");
+                try
+                {
+                    var clientInfo = JsonSerializer.Deserialize<ClientMine>(messageBuffer);
+                    if (clientInfo != null)
+                    {
+                        OnClientInfoReceived?.Invoke(clientInfo);
+                        return;
+                    }
+                }
+                catch
+                {
+                    string textMessage = Encoding.UTF8.GetString(messageBuffer, 0, bytesRead);
+                    OnMessageReceived?.Invoke(textMessage);
+                }
             }
         }
 
-        private static async Task SendMessageAsync(Socket clientSocket)
+        private async Task SendClientInfoAsync()
         {
-            try
+            var clientInfo = new ClientMine()
             {
-   
-                string? message = await Task.Run(() => Console.ReadLine());
-                Console.Write("> ");
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-                    await clientSocket.SendAsync(messageBytes, SocketFlags.None);
-                }
-            }
-            catch (SocketException)
-            {
-                Console.WriteLine("Erro na conexão com o servidor.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao enviar mensagem: {ex.Message}");
-            }
+                Status = true,
+                Name = Environment.MachineName,
+                So = IdentifierSystemOperation.GetOS().ToString(),
+            };
+
+            await SendObjectAsync(clientInfo);
+        }
+
+        public async Task SendObjectAsync<T>(T obj)
+        {
+            if (!_workSocket.Connected) return;
+
+            var objectData = JsonSerializer.SerializeToUtf8Bytes(obj);
+            var lengthData = BitConverter.GetBytes(objectData.Length);
+
+            await _workSocket.SendAsync(lengthData, SocketFlags.None);
+            await _workSocket.SendAsync(objectData, SocketFlags.None);
+
+            // await SendDataWithTimeoutAsync(lengthData);
+            // await SendDataWithTimeoutAsync(objectData);
+        }
+
+        private async Task SendDataWithTimeoutAsync(byte[] data)
+        {
+            var timeoutTask = Task.Delay(CheckInterval, _cancellationTokenSource.Token);
+
+            var sendTask = _workSocket.SendAsync(data, SocketFlags.None);
+
+            var completedTask = await Task.WhenAny(sendTask, timeoutTask);
+
+            if (completedTask == timeoutTask) throw new SocketException();
+
+            if (sendTask.IsFaulted) throw new SocketException();
+
+        }
+
+        public void Stop()
+        {
+            _cancellationTokenSource.Cancel();
         }
     }
 }
