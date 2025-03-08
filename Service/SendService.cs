@@ -1,24 +1,40 @@
 using System.Net.Security;
-using ServerBlockChain.Entities;
-using ServerBlockChain.Interface;
+using ClientBlockchain.Entities;
+using ClientBlockChain.Entities;
+using ClientBlockchain.Handler;
+using ClientBlockchain.Interface;
 
-namespace ServerBlockChain.Service
+namespace ClientBlockchain.Service
 {
-    public class SendService(SslStream sslStream, CancellationTokenSource cancellationToken) : ISend
+    public class SendService<T> : ISend<T>
     {
-        private readonly SslStream _sslStream = sslStream;
-        private readonly CancellationTokenSource _cancellationToken = cancellationToken;
-        private Send? _send;
-        public event Action<byte[]>? SendingAtc;
-        public event Action<SslStream>? ClientDisconnectedAtc;
-        
-        public async Task SendAsync(byte[] data)
-        {
-            _send = new Send(_sslStream, _cancellationToken);
-            _send.ClientDisconnectedAtc += (dataByte) => ClientDisconnectedAtc?.Invoke(dataByte);
-            _send.SendingAtc += (dataByte) => SendingAtc?.Invoke(dataByte);
+        private readonly ManagerTypeEventBus _managerTypeEventBus = new();
 
-            await _send.SendAsync(data);
+        public async Task SendAsync(T data, SslStream sslStream,
+            CancellationToken cts = default)
+        {
+            var send = new Send<T>(sslStream);
+            send.SentAct += OnSendingAtc;
+
+            if(data is List<T> listData)
+            {
+                await send!.SendListAsync(listData, cts);
+            }
+            await send.SendAsync(data, cts);
+        }
+
+        public async Task SendListAsync(List<T> listData, SslStream sslStream,
+            CancellationToken cts = default)
+        {
+            var sendList = new SendList<T>(sslStream);
+
+            await sendList.SendListAsync(listData, cts);
+        }
+
+        private void OnSendingAtc(T data)
+        {
+            Console.WriteLine($"Send data: {data}");
+            _managerTypeEventBus.PublishEventType(data!);
         }
     }
 }

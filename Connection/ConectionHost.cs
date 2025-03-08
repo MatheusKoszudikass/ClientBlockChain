@@ -77,7 +77,7 @@ namespace ClientBlockchain.Connection
         {
             try
             {
-                return await httpClient.GetStringAsync("https://api.ipify.org");
+                return await httpClient.GetStringAsync("https://checkip.amazonaws.com");
             }
             catch (Exception ex)
             {

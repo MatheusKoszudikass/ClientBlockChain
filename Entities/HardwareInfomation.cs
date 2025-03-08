@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using Hardware.Info;
 
 
-namespace ClientBlockChain.Entities;
+namespace ClientBlockchain.Entities;
 
 public class HardwareInfomation
 {
@@ -65,10 +65,11 @@ public class HardwareInfomation
     {
         try
         {
-            using var cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            cpuCounter.NextValue();
-            Thread.Sleep(1000);
-            return cpuCounter.NextValue();
+            // using var cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            // cpuCounter.NextValue();
+            // Thread.Sleep(1000);
+            // return cpuCounter.NextValue();
+            return 0;
 
         }
         catch (Exception ex)

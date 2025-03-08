@@ -1,12 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace ClientBlockChain.Interface
+namespace ClientBlockChain.Interface;
+public interface IStartClient
 {
-    public interface IStartClient
-    {
-       Task Connect();
-    }
+    Task Connect();
 }

@@ -1,14 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using ClientBlockChain.Entity;
+using ClientBlockchain.Entities;
 
-namespace ClientBlockChain.Interface
+namespace ClientBlockChain.Interface;
+
+public interface IClientMineService
 {
-    public interface IClientMineService
-    {
-        Task ClientMineInfoAsync(Listener listener);
-    }
+    Task ClientMineInfoAsync(Listener listener, CancellationToken cts = default);
 }

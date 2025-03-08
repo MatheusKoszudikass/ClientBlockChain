@@ -1,33 +1,46 @@
 using System.Net.Security;
-using ServerBlockChain.Entities;
-using ServerBlockChain.Interface;
+using ClientBlockchain.Entities;
+using ClientBlockChain.Entities;
+using ClientBlockchain.Handler;
+using ClientBlockchain.Interface;
 
-namespace ServerBlockChain.Service
+namespace ClientBlockchain.Service
 {
-    public sealed class ReceiveService(SslStream ssltream,
-        CancellationTokenSource cancellationToken) : IReceive
+    public sealed class ReceiveService<T> : IReceive<T>
     {
-        private readonly SslStream _sslStream = ssltream;
-        private Receive? _receive;
-        private readonly CancellationTokenSource _cancellationToken = cancellationToken;
-        private readonly GlobalEventBus? _globalEventBus = GlobalEventBus.InstanceValue;
-        public event Action<byte[]>? ReceivedAtc;
-        public event Action<SslStream>? ClientDesconnectedAct;
+        private Receive<T>? _receive;
+        private ReceiveList<T>? _receiveList;
+        private readonly ManagerTypeEventBus _managerTypeEventBus = new ManagerTypeEventBus();
 
-        public async Task ReceiveDataAsync()
+        public async Task ReceiveDataAsync(SslStream sslStream, CancellationToken cts)
         {
-          _receive = new Receive(_sslStream, _cancellationToken);
+            _receive = new Receive<T>(sslStream, cts);
 
-          _receive.ClientDisconnectedAct += (data) => ClientDesconnectedAct?.Invoke(data);
-          _receive.ReceivedAct += OnReceivedAtc;
+            _receive.Received += OnReceivedAtc;
 
-           await _receive.ReceiveDataAsync();
+            await _receive.ReceiveDataAsync();
         }
 
-        private void OnReceivedAtc(byte[] data)
+        public async Task ReceiveListDataAsync(SslStream sslStream, CancellationToken cts)
         {
-           _globalEventBus!.Publish(data);
+            _receiveList = new ReceiveList<T>(sslStream, cts);
+
+            _receiveList.ReceiveListAct += OnReceiveListAtc;
+
+            await _receiveList.ReceiveListAsync();
         }
-        
+
+        private void OnReceivedAtc(T data)
+        {
+            Console.WriteLine($"Receive data: {data}");
+            _managerTypeEventBus.PublishEventType(data!);
+        }
+
+        private void OnReceiveListAtc(List<T> listData)
+        {
+            Console.WriteLine($"Receive data: {listData}");
+            var objectList = listData.Cast<object>().ToList();
+            _managerTypeEventBus.PublishEventType(objectList);
+        }
     }
 }

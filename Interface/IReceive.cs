@@ -1,16 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Security;
-using System.Threading.Tasks;
 
-namespace ServerBlockChain.Interface
+namespace ClientBlockchain.Interface;
+public interface IReceive<T>
 {
-    public interface IReceive
-    {
-        event Action<byte[]>? ReceivedAtc;
-        event Action<SslStream>?  ClientDesconnectedAct;
+    Task ReceiveDataAsync(SslStream sslStream,
+        CancellationToken cancellationToken = default);
 
-        Task ReceiveDataAsync();
-    }
+    Task ReceiveListDataAsync(SslStream sslStream,
+        CancellationToken cancellationToken = default);
 }

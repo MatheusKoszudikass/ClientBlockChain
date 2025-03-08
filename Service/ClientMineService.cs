@@ -1,27 +1,39 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using ClientBlockChain.Entities;
-using ClientBlockChain.Entity;
+using ClientBlockchain.Entities;
+using ClientBlockChain.Entities.Enum;
+using ClientBlockchain.Handler;
+using ClientBlockchain.Interface;
 using ClientBlockChain.Interface;
 
-namespace ClientBlockChain.Service
+namespace ClientBlockChain.Service;
+public sealed class ClientMineService : IClientMineService
 {
-    public class ClientMineService(
-        IDataMonitorService<ClientMine> dataMonitorService) : IClientMineService
+    private readonly IDataMonitorService<ClientMine> _dataMonitorService;
+    private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
+    private readonly IIlogger<ClientMineService> _ilogger;
+
+    public ClientMineService(
+        IDataMonitorService<ClientMine> dataMonitorService,
+        IIlogger<ClientMineService> ilogger)
     {
-        private readonly IDataMonitorService<ClientMine> _dataMonitorService = dataMonitorService;
-
-        public async Task ClientMineInfoAsync(Listener listener)
-        {
-            var clientMine = new ClientMine();
-
-           await _dataMonitorService.StartDepencenciesAsync(listener);
-           await _dataMonitorService.SendDataAsync(clientMine);
-        //    _= _dataMonitorService.ReceiveDataAsync();
-        }
-        
+        _dataMonitorService = dataMonitorService;
+        _ilogger = ilogger;
+        _globalEventBus.Subscribe<ClientMine>(OnClientMineInfo);
     }
+
+    public async Task ClientMineInfoAsync(Listener listener,
+     CancellationToken cts = default)
+    {
+        GlobalEventBusNewInstance();
+        var clientMine = new ClientMine();
+        await _dataMonitorService.StartDepencenciesAsync(Listener.Instance, cts);
+        await _dataMonitorService.SendDataAsync(clientMine, cts);
+        _ = _ilogger.Log(clientMine, "ClientMineInfoAsync", LogLevel.Information);
+    }
+
+    private void GlobalEventBusNewInstance()
+    {
+        _globalEventBus = GlobalEventBus.InstanceValue;
+        _globalEventBus.Subscribe<ClientMine>(OnClientMineInfo);
+    }
+    private static void OnClientMineInfo(ClientMine data) => Console.WriteLine($"OnClientMineInfo{data.Name}. {data.Id}");
 }

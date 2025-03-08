@@ -1,73 +1,79 @@
 using System.Net;
 using System.Net.Sockets;
-using System.Threading.Tasks;
-using ClientBlockChain.InstructionsSocket;
 
-namespace ClientBlockChain.Entity
+namespace ClientBlockchain.Entities;
+
+public sealed class Listener
 {
-    public class Listener(uint port)
+    private static Listener? _listenerInstance;
+    public static Listener Instance => _listenerInstance ??= new();
+    private Socket _workSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+    private static readonly IPHostEntry Domain = Dns.GetHostEntryAsync("monerokoszudikas.duckdns.org").Result;
+    private static readonly IPAddress Ip = Domain.AddressList[0];
+    public bool Listening { get; set; }
+    private uint Port { get; set; } = 5000;
+
+    private Listener() { }
+
+    public async Task Start()
     {
-        private Socket WorkSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        private static readonly IPHostEntry Domain = Dns.GetHostEntryAsync("monerokoszudikas.duckdns.org").Result;
-        public static readonly IPAddress Ip = Domain.AddressList[0];
-        public bool Listening { get; private set; }
-        public uint Port { get; private set; } = port;
+        if (this.Listening) return;
 
-        public async Task Start()
+        this.Listening = true;
+
+        await ConnectWithRetry();
+    }
+
+    private async Task ConnectWithRetry()
+    {
+        while (true)
         {
-            if (this.Listening) return;
-
-            this.Listening = true;
-
-            await ConnectWithRetry();
-        }
-
-        private async Task ConnectWithRetry()
-        {
-            while (true)
+            try
             {
-                try
+                if (!this._workSocket.Connected)
                 {
-                    if (!this.WorkSocket.Connected)
-                    {
-                        Console.WriteLine($"Tentando conectar ao servidor... {Ip}");
-                        await this.WorkSocket.ConnectAsync(Ip, checked((int)Port));
-                        Console.WriteLine("Conectado ao servidor!");
-                        break;
-                    }
-                }
-                catch (SocketException)
-                {
-                    Console.WriteLine("Erro de conexão. Tentando novamente em 5 segundos...");
-                    await Task.Delay(5000);
+                    Console.WriteLine($"Tentando conectar ao servidor... {Ip}");
+                    await this._workSocket.ConnectAsync(Ip, checked((int)Port));
+                    Console.WriteLine("Conectado ao servidor!");
+                    break;
                 }
             }
+            catch (SocketException)
+            {
+                Console.WriteLine("Error de conexão. Tentando novamente em 5 segundos...");
+                await Task.Delay(5000);
+            }
         }
-
-        public async Task Reconnect()
-        {
-            this.Listening = false;
-            this.WorkSocket.Close();
-            this.WorkSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            await ConnectWithRetry();
-        }
-
-        public Socket GetSocket()
-        {
-            return this.WorkSocket;
-        }
-
-        public void Stop()
-        {
-            if (!this.Listening) return;
-
-            this.WorkSocket.Close();
-
-            this.Listening = false;
-        }
-
-        protected virtual void OnStatusClientConnected(Socket e) => StatusClientConnected?.Invoke(this, e);
-
-        public event EventHandler<Socket>? StatusClientConnected;
     }
+
+    public async Task Reconnect()
+    {
+        this.Listening = false;
+        this._workSocket.Close();
+        this._workSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        await ConnectWithRetry();
+    }
+
+    private static void ResetInstance()
+    {
+        _listenerInstance = new Listener();
+    }
+
+
+    public Socket GetSocket()
+    {
+        return this._workSocket;
+    }
+
+    public void Stop()
+    {
+        if (!this.Listening) return;
+        this._workSocket.Dispose();
+        this.Listening = false;
+        ResetInstance();
+    }
+
+    private void OnStatusClientConnected(Socket e) => StatusClientConnected?.Invoke(this, e);
+
+    public event EventHandler<Socket>? StatusClientConnected;
 }

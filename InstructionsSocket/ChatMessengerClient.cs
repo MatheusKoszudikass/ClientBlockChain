@@ -12,7 +12,6 @@ namespace ClientBlockChain.InstructionsSocket
     {
         private readonly Socket _workSocket;
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private static readonly SslStream? _sslStream;
         public event Action<Socket>? StatusClientConnected;
         public event Action<ClientMine>? OnClientInfoReceived;
         public event Action<string>? OnMessageReceived;

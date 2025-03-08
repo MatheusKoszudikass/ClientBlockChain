@@ -1,18 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using ClientBlockChain.Entities;
-using ClientBlockChain.Entity;
+using ClientBlockchain.Entities;
 
-namespace ClientBlockChain.Interface
+namespace ClientBlockChain.Interface;
+
+public interface IDataConfirmationService
 {
-    public interface IDataConfirmationService
-    {
-        public event Action<SendMessageDefault>? DataAct;
-        Task StartMonitoringAsync(Listener listener); 
+    Task StartMonitoringAsync(Listener listener, CancellationToken cts = default);
 
-        Task Monitoring(Listener listener);
-    }
+    Task Monitoring(Listener listener, CancellationToken cts = default);
 }

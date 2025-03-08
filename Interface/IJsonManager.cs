@@ -1,4 +1,4 @@
-namespace ServerBlockChain.Interface;
+namespace ClientBlockchain.Interface;
 public interface IJsonManager<T> 
 {
     string Serialize(T objs);

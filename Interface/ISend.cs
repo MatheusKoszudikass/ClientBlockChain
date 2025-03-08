@@ -1,16 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Security;
-using System.Threading.Tasks;
 
-namespace ServerBlockChain.Interface
+namespace ClientBlockchain.Interface;
+
+public interface ISend<T>
 {
-    public interface ISend
-    {
-        event Action<byte[]> SendingAtc;
-        event Action<SslStream> ClientDisconnectedAtc;
+    Task SendAsync(T data, SslStream sslStream,
+        CancellationToken cts = default);
 
-        Task SendAsync(byte[] data);
-    }
+    Task SendListAsync(List<T> listData, SslStream sslStream,
+        CancellationToken cts = default);
 }

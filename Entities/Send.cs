@@ -1,69 +1,82 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace ClientBlockChain.Entities
 {
-    public class Send<T> (SslStream sslStream, CancellationTokenSource cancellationTokenSource)
+    public class Send<T>(SslStream sslStream)
     {
-        private readonly SslStream _sslStream =  sslStream;
-        private readonly CancellationTokenSource _cancellationTokenSource = cancellationTokenSource;
-        public event EventHandler<T>? Sending;
-        public event EventHandler<T>? Sent;
-        
+        private readonly SslStream _sslStream = sslStream;
+        public event Action<T>? SendingAct;
+        public event Action<T>? SentAct;
+        public event Action<List<T>>? SentListAct;
 
-        public async Task SendAsync(T data)
+        public async Task SendAsync(T data, CancellationToken cts = default)
         {
-            try
-            {
-                // await ExecuteWithTimeout( () => SendLengthPrefix(data), TimeSpan.FromSeconds(5));
-                // await ExecuteWithTimeout( () => SendObject(data), TimeSpan.FromSeconds(5));
 
-                await SendLengthPrefix(data);
-                await SendObject(data);
-            }
-            catch (SocketException ex)
-            {
-                throw new Exception($"Error sending object: {ex.Message}");
-            }
+            await ExecuteWithTimeout(() => SendLengthPrefix(data!), TimeSpan.FromSeconds(5), cts);
+            await ExecuteWithTimeout(() => SendObject(data!), TimeSpan.FromSeconds(5), cts);
+
+            await _sslStream.FlushAsync(cts);
         }
 
-        private async Task SendLengthPrefix(T data)
+        public async Task SendListAsync(List<T> listData, CancellationToken cts = default)
+        {
+            await SendLengthPrefix(listData, true, cts);
+            await SendObject(listData, cts);
+        }
+
+        private async Task SendLengthPrefix(object data, bool isList = false, CancellationToken cts = default)
         {
             StateObject.BufferSend = BitConverter.GetBytes(JsonSerializer.SerializeToUtf8Bytes(data).Length);
-            await _sslStream.WriteAsync(StateObject.BufferSend, _cancellationTokenSource.Token);
+
+            Array.Copy(StateObject.BufferSend, StateObject.BufferInit, 4);
+            StateObject.BufferInit[4] = isList ? (byte)1 : (byte)0;
+
+            await _sslStream.WriteAsync(StateObject.BufferInit, cts);
+            CheckWhichType(data, isList);
         }
 
-        private async Task SendObject(T data)
+        private async Task SendObject(object data, CancellationToken cts = default)
         {
             StateObject.BufferSend = JsonSerializer.SerializeToUtf8Bytes(data);
-            await _sslStream.WriteAsync(StateObject.BufferSend, _cancellationTokenSource.Token);
-            OnSending(data);
+            await _sslStream.WriteAsync(StateObject.BufferSend, cts);
+
+            if (data is List<T> listData)
+            {
+                SentListAct?.Invoke(listData);
+                return;
+            }
+
+            SentAct?.Invoke((T)data);
         }
 
-        private async Task ExecuteWithTimeout(Func<Task> taskFunc, TimeSpan timeout)
+        private static async Task ExecuteWithTimeout(Func<Task> taskFunc,
+         TimeSpan timeout, CancellationToken cts = default)
         {
-            var timeoutTask = Task.Delay(timeout, _cancellationTokenSource.Token);
+            var timeoutTask = Task.Delay(timeout, cts);
             var task = taskFunc();
 
-            if(await Task.WhenAny(task, timeoutTask) == timeoutTask)
+            if (await Task.WhenAny(task, timeoutTask) == timeoutTask)
                 throw new TimeoutException("Operation timed out.");
 
             await task;
         }
 
-        protected virtual void OnSending(T data)
+        private void CheckWhichType(object data, bool isList)
         {
-            Sending?.Invoke(this, data);
+            if (isList)
+            {
+                SentListAct?.Invoke((List<T>)data);
+                return;
+            }
+
+            OnSending((T)data);
         }
 
-        protected virtual void OnSent(T data)
+        private void OnSending(T data)
         {
-            Sent?.Invoke(this, data);
+            SendingAct?.Invoke(data);
         }
     }
 }

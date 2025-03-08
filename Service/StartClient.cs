@@ -1,64 +1,78 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using ClientBlockChain.Entity;
+using ClientBlockchain.Entities;
+using ClientBlockChain.Entities.Enum;
+using ClientBlockchain.Handler;
 using ClientBlockChain.InstructionsSocket;
+using ClientBlockchain.Interface;
 using ClientBlockChain.Interface;
+using ClientBlockchain.Service;
 
-namespace ClientBlockChain.Service
+namespace ClientBlockChain.Service;
+
+public class StartClient : IStartClient
 {
-    public class StartClient(
-        IDataConfirmationService dataConfirmationService, IClientMineService clientMineService) : IStartClient
+    private readonly IClientMineService _clientMineService;
+    private readonly IIlogger<Listener> _logger;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
+    private bool _isREconnecting = false;
+    private int _retryCount = 0;
+
+    public StartClient(IClientMineService clientMineService,
+    IIlogger<Listener> logger)
     {
-        private readonly IDataConfirmationService _dataConfirmationService = dataConfirmationService;
-        private readonly IClientMineService _clientMineService = clientMineService;
-        public async Task Connect()
+        _clientMineService = clientMineService;
+        _logger = logger;
+
+        _globalEventBus.Subscribe<Listener>(HandleDisconnection);
+    }
+
+    public async Task Connect()
+    {
+        try
         {
-            var workSocket = new Listener(5000);
+            await Listener.Instance.Start();
 
-            try
-            {
-                await workSocket.Start();
+            _ = _logger.Log(Listener.Instance, "Connected to server", LogLevel.Information);
 
-                var chat = new ChatMessengerClient(workSocket.GetSocket());
-
-                async Task Reconnect()
-                {
-                    workSocket.Stop();
-                    workSocket = new Listener(5000);
-                    await workSocket.Start();
-                    chat = new ChatMessengerClient(workSocket.GetSocket());
-                    RegisterReconnectEvent();
-                    await chat.StartChatAsync();
-                }
-
-                void RegisterReconnectEvent()
-                {
-                    chat.StatusClientConnected -= async (socket) => await Reconnect();
-                    chat.StatusClientConnected += async (socket) => await Reconnect();
-                }
-
-                RegisterReconnectEvent();
-
-                // await _dataConfirmationService.StartMonitoringAsync(workSocket.GetSocket());
-
-                await _clientMineService.ClientMineInfoAsync(workSocket);
-
-                await _dataConfirmationService.Monitoring(workSocket);
-
-                // await chat.StartChatAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao conectar: {ex.Message}");
-            }
+            await _clientMineService.ClientMineInfoAsync(Listener.Instance);
         }
-
-        private static void RegisterReconnectEvent()
+        catch (Exception ex)
         {
-            chat.StatusClientConnected -= async (socket) => await Reconnect();
-            chat.StatusClientConnected += async (socket) => await Reconnect();
+            _ = _logger.Log(Listener.Instance!, ex, ex.Message, LogLevel.Error);
+            await Reconnect();
         }
+    }
+
+    private async Task Reconnect()
+    {
+        if (_isREconnecting) return;
+
+        _isREconnecting = true;
+        await _semaphore.WaitAsync();
+
+        try
+        {
+            Console.WriteLine($"Retry count reconnecting: {_retryCount}");
+            AuthenticateServer.Instance.Stop();
+            Listener.Instance.Stop();
+            _retryCount++;
+
+            GlobalEventBus.ResetInstance();
+            _globalEventBus = GlobalEventBus.InstanceValue;
+            _globalEventBus.Subscribe<Listener>(HandleDisconnection);
+
+            _isREconnecting = false;
+            await Connect();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+
+    private async void HandleDisconnection(Listener listener)
+    {
+        await Reconnect();
     }
 }

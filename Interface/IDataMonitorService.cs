@@ -1,17 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using ClientBlockChain.Entity;
+using ClientBlockchain.Entities;
 
-namespace ClientBlockChain.Interface
+namespace ClientBlockchain.Interface;
+
+public interface IDataMonitorService<T>
 {
-    public interface IDataMonitorService<T>
-    {
-        Task StartDepencenciesAsync(Listener listener);
-        Task ReceiveDataAsync();
-        Task SendDataAsync(T data);
-        void StopMonitoring();
-    }
+    Task StartDepencenciesAsync(Listener listener,
+    CancellationToken cts = default);
+    Task ReceiveDataAsync(CancellationToken cts = default);
+    Task SendDataAsync(T data, CancellationToken cts = default);
+    Task SendListDataAsync(List<T> listData,
+     CancellationToken cts = default);
+    void StopMonitoring();
 }
