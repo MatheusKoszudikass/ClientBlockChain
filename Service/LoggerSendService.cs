@@ -10,7 +10,6 @@ public class LoggerSendService : ILoggerSend
     private readonly List<LogEntry> _logEntries = [];
     private readonly ISend<LogEntry> _sendList;
     private readonly GlobalEventBus _globalEventBus;
-    private readonly ManagerTypeEventBus _managerTypeEventBus = new ();
     private CancellationToken _cts = CancellationToken.None;
 
     public LoggerSendService(ISend<LogEntry> sendList,
@@ -18,8 +17,11 @@ public class LoggerSendService : ILoggerSend
     {
         _sendList = sendList;
         _globalEventBus = globalEventBus;
+
+        Task.Run(() => {
         _globalEventBus.SubscribeList<LogEntry>(
             async logEntries => await OnLogEntryReceived(logEntries));
+        });
     }
 
     private async Task OnLogEntryReceived(List<LogEntry> logEntries)
@@ -54,7 +56,7 @@ public class LoggerSendService : ILoggerSend
         catch (Exception ex)
         {
             Console.WriteLine($"Error sending log entries: {ex.Message}");
-            _managerTypeEventBus.PublishEventType(Listener.Instance!);
+            _globalEventBus.Publish(Listener.Instance!);
             throw;
         }
     }

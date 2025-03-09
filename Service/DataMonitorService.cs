@@ -16,7 +16,7 @@ public class DataMonitorService<T>(
     private readonly ISend<T>? _send = send;
     private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
     private SslStream? _sslStream;
-    private T? _data {get; set;} = default!; 
+    private T? _data { get; set; } = default!;
 
     public async Task StartDepencenciesAsync(Listener listener, CancellationToken cts)
     {
@@ -55,9 +55,7 @@ public class DataMonitorService<T>(
                 try
                 {
                     _ = _ilogger.Log(_data!, "ReceiveDataAsync", LogLevel.Information);
-                    await ExecuteWithTimeout(() => _receive!.ReceiveDataAsync(_sslStream!, cts),
-                        TimeSpan.FromSeconds(5),
-                        "ReceiveDataAsync", cts);
+                    await _receive!.ReceiveDataAsync(_sslStream!, cts);
                     break;
                 }
                 catch (SocketException ex)
@@ -98,9 +96,7 @@ public class DataMonitorService<T>(
             Console.WriteLine($"Send data: {data}");
 
             _ = _ilogger.Log(data, "SendDataAsync", LogLevel.Information);
-            await ExecuteWithTimeout(() =>
-                _send!.SendAsync(data, _sslStream!, cts), TimeSpan.FromSeconds(5), "SendDataAsync", cts);
-
+            await _send!.SendAsync(data, _sslStream!, cts);
         }
         catch (SocketException ex)
         {
@@ -111,7 +107,6 @@ public class DataMonitorService<T>(
         catch (Exception ex)
         {
             _ = _ilogger.Log(_data!, ex, ex.Message + "SendDataAsync exception", LogLevel.Error);
-            _sslStream!.Close();
             NotifyDisconnection();
             throw new Exception("SendDataAsync exception");
         }
@@ -124,10 +119,8 @@ public class DataMonitorService<T>(
 
         try
         {
-            // await _send!.SendListAsync(listData, _sslStream!, cts);  
             _ = _ilogger.Log(listData, "SendListDataAsync", LogLevel.Information);
-            await ExecuteWithTimeout(() =>
-                _send!.SendListAsync(listData, _sslStream!, cts), TimeSpan.FromSeconds(5), "SendListDataAsync", cts);
+            await _send!.SendListAsync(listData, _sslStream!, cts);
         }
         catch (Exception ex)
         {
@@ -161,22 +154,6 @@ public class DataMonitorService<T>(
             NotifyDisconnection();
             throw new Exception("Dependencies not initialized");
         }
-    }
-
-    private async Task ExecuteWithTimeout(Func<Task> taskFunc,
-     TimeSpan timeout, string operationName, CancellationToken cts)
-    {
-        var timeoutTask = Task.Delay(timeout, cts);
-        var task = taskFunc();
-
-        if (await Task.WhenAny(task, timeoutTask) == timeoutTask)
-        {
-            _ = _ilogger.Log(_data!, $"{operationName} timed out", LogLevel.Error);
-            NotifyDisconnection();
-            throw new TimeoutException($"{operationName} timed out after {timeout.TotalSeconds} seconds");
-        }
-
-        await task;
     }
 
     private void GlobalEventBusNewInstance()

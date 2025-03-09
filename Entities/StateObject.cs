@@ -1,10 +1,10 @@
 namespace ClientBlockChain.Entities;
-public static class StateObject
+public class StateObject
 {
-    public static int BufferSize = 5;
-    public static int BufferReceiveSize;
-    public static byte[] BufferInit { get; set; } = new byte[BufferSize];
-    public static byte[] BufferReceive { get; set; } = new byte[BufferReceiveSize];
-    public static bool IsList { get; set; }
-    public static byte[] BufferSend { get; set; } = [];
+    public int BufferSize { get; set; }
+    public byte[] BufferInit { get; set; } = new byte[5];
+    public byte[] BufferSend { get; set; } = [];
+    public byte[] BufferReceive { get; set; } = [];
+    public bool IsList { get; set; }
 }
+

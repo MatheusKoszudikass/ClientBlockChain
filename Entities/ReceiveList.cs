@@ -5,36 +5,37 @@ using ClientBlockChain.Entities;
 
 namespace ClientBlockchain.Entities;
 
-public class ReceiveList<T>(SslStream sslStream, CancellationToken cancellationToken)
+public class ReceiveList<T>(SslStream sslStream)
 {
-    private readonly SslStream _sslStream = sslStream;
-    private readonly CancellationToken _cancellationToken = cancellationToken;
-    public Action<List<T>>? ReceiveListAct;
+    private readonly SslStream SslStream = sslStream;
+    private readonly StateObject Buffer = new();
+
+    public event Action<List<T>>? ReceiveListAct;
     private int _totalBytesReceived;
 
-    public async Task ReceiveListAsync()
+    public async Task ReceiveListAsync(CancellationToken cts = default)
     {
-        await ExecuteWithTimeout(() => ReceiveLengthPrefix(), TimeSpan.FromSeconds(5), cts: _cancellationToken);
-        await ExecuteWithTimeout(() => ReceiveObjectAsync(), TimeSpan.FromSeconds(5), cts: _cancellationToken);
-        await _sslStream.FlushAsync();
+        await ExecuteWithTimeout(() => ReceiveLengthPrefix(cts), TimeSpan.FromSeconds(5), cts);
+        await ExecuteWithTimeout(() => ReceiveObjectAsync(cts), TimeSpan.FromSeconds(5), cts);
+        await SslStream.FlushAsync(cts);
         DeserializeObject();
     }
 
-    private async Task ReceiveLengthPrefix()
+    private async Task ReceiveLengthPrefix(CancellationToken cts = default)
     {
-        _ = await _sslStream.ReadAsync(StateObject.BufferInit, _cancellationToken);
-        StateObject.BufferReceiveSize = BitConverter.ToInt32(StateObject.BufferInit, 0);
-        StateObject.BufferReceive = new byte[StateObject.BufferReceiveSize];
+        _ = await SslStream.ReadAsync(this.Buffer.BufferInit, cts);
+        this.Buffer.BufferSize = BitConverter.ToInt32(this.Buffer.BufferInit, 0);
+        this.Buffer.BufferReceive = new byte[this.Buffer.BufferSize];
     }
 
-    private async Task ReceiveObjectAsync()
+    private async Task ReceiveObjectAsync(CancellationToken cts = default)
     {
         _totalBytesReceived = 0;
-        while (_totalBytesReceived < StateObject.BufferReceiveSize)
+        while (_totalBytesReceived < this.Buffer.BufferSize)
         {
-            var bytesRead = await _sslStream.ReadAsync(
-                StateObject.BufferReceive.AsMemory(_totalBytesReceived,
-                    StateObject.BufferReceiveSize - _totalBytesReceived), _cancellationToken);
+            var bytesRead = await SslStream.ReadAsync(
+                this.Buffer.BufferReceive.AsMemory(_totalBytesReceived,
+                    this.Buffer.BufferSize - _totalBytesReceived), cts);
             if (bytesRead == 0) break;
             _totalBytesReceived += bytesRead;
         }
@@ -42,20 +43,14 @@ public class ReceiveList<T>(SslStream sslStream, CancellationToken cancellationT
 
     private void DeserializeObject()
     {
-        try
-        {
-            if (this._totalBytesReceived != StateObject.BufferReceiveSize) return;
-            var jsonData = Encoding.UTF8.GetString(StateObject.BufferReceive, 0, _totalBytesReceived);
-            var resultObj = JsonSerializer.Deserialize<List<T>>(jsonData);
-            OnReceiveList(resultObj!);
-        }
-        catch (JsonException ex)
-        {
-            throw new Exception($"Error deserializing object: {ex.Message}");
-        }
+        if (this._totalBytesReceived != this.Buffer.BufferSize) return;
+        var jsonData = Encoding.UTF8.GetString(this.Buffer.BufferReceive, 0, _totalBytesReceived);
+        var resultObj = JsonSerializer.Deserialize<List<T>>(jsonData);
+        OnReceiveList(resultObj!);
+
     }
 
-    private async Task ExecuteWithTimeout(Func<Task> taskFunc, TimeSpan timeout, CancellationToken cts)
+    private static async Task ExecuteWithTimeout(Func<Task> taskFunc, TimeSpan timeout, CancellationToken cts)
     {
         var timeoutTask = Task.Delay(timeout, cts);
         var task = taskFunc();

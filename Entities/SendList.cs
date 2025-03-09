@@ -7,31 +7,31 @@ namespace ClientBlockchain.Entities;
 
 public class SendList<T>(SslStream sslStream)
 {
-    private readonly SslStream _sslStream = sslStream;
-    public readonly Action<List<T>>? _sentListAtc;
+    private readonly SslStream SslStream = sslStream;
+    private readonly StateObject Buffer = new();
+    public readonly Action<List<T>>? SentListAct;
 
     public async Task SendListAsync(List<T> listData, CancellationToken cts = default)
     {
-        await ExecuteWithTimeout(() => SendLengthPrefix(listData, cts), TimeSpan.FromSeconds(5), cts);
-        await ExecuteWithTimeout(() => SendObjectAsync(listData, cts), TimeSpan.FromSeconds(5), cts);
-        await _sslStream.FlushAsync(cts);
+        await ExecuteWithTimeout(() => SendLengthPrefix(listData, cts), TimeSpan.FromMinutes(5), cts);
+        await ExecuteWithTimeout(() => SendObjectAsync(listData, cts), TimeSpan.FromMinutes(5), cts);
+        await this.SslStream.FlushAsync(cts);
     }
     private async Task SendLengthPrefix(List<T> listData, CancellationToken cts = default)
     {
-        StateObject.BufferSend = BitConverter.GetBytes(JsonSerializer.SerializeToUtf8Bytes(listData).Length);
+        this.Buffer.BufferSend = BitConverter.GetBytes(JsonSerializer.SerializeToUtf8Bytes(listData).Length);
 
-        Array.Copy(StateObject.BufferSend, StateObject.BufferInit, 4);
-        StateObject.BufferInit[4] = (byte)1;
+        Array.Copy(this.Buffer.BufferSend, this.Buffer.BufferInit, 4);
+        this.Buffer.BufferInit[4] = (byte)1;
 
-        await _sslStream.WriteAsync(StateObject.BufferInit, cts);
+        await this.SslStream.WriteAsync(this.Buffer.BufferInit, cts);
     }
 
     private async Task SendObjectAsync(List<T> listData, CancellationToken cts = default)
     {
-        StateObject.BufferSend = JsonSerializer.SerializeToUtf8Bytes(listData);
-        await _sslStream.WriteAsync(StateObject.BufferSend, cts);
+        this.Buffer.BufferSend = JsonSerializer.SerializeToUtf8Bytes(listData);
+        await this.SslStream.WriteAsync(this.Buffer.BufferSend, cts);
     }
-
 
     private static async Task ExecuteWithTimeout(Func<Task> taskFunc, TimeSpan timeout, CancellationToken cts)
     {

@@ -68,7 +68,7 @@ public sealed class Listener
     public void Stop()
     {
         if (!this.Listening) return;
-        this._workSocket.Dispose();
+        this._workSocket.Close();
         this.Listening = false;
         ResetInstance();
     }

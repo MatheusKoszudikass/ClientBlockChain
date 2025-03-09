@@ -5,45 +5,38 @@ using System.Text.Json;
 
 namespace ClientBlockChain.Entities
 {
-    public sealed class Receive<T>(SslStream sslStream, CancellationToken cancellationToken)
+    public sealed class Receive<T>(SslStream sslStream)
     {
-        private readonly SslStream _sslStream = sslStream;
+        private readonly SslStream SslStream = sslStream;
+        private readonly StateObject Buffer = new();
         private int _totalBytesReceived;
-        private readonly CancellationToken _cancellationToken = cancellationToken;
         public event Action<T>? Received;
-        public event Action<CancellationTokenSource>? CanceledOperation;
 
-        public async Task ReceiveDataAsync()
+        public async Task ReceiveDataAsync(CancellationToken cts = default)
         {
-            try
-            {
-                await ExecuteWithTimeout( () =>ReceiveLengthPrefix(), TimeSpan.FromSeconds(5));
-                await ExecuteWithTimeout(() => ReceiveObject(), TimeSpan.FromSeconds(5));
 
-                await _sslStream.FlushAsync();
-                DeserializeObject();
-            }
-            catch (SocketException ex)
-            {
-                throw new Exception($"Error receiving object: {ex.Message}");
-            }
+            await ExecuteWithTimeout(() => ReceiveLengthPrefix(cts), TimeSpan.FromSeconds(5), cts);
+            await ExecuteWithTimeout(() => ReceiveObject(cts), TimeSpan.FromSeconds(5), cts);
+
+            await SslStream.FlushAsync(cts);
+            DeserializeObject();
         }
 
-        private async Task ReceiveLengthPrefix()
+        private async Task ReceiveLengthPrefix(CancellationToken cts = default)
         {
-             _ = await _sslStream.ReadAsync(StateObject.BufferInit, _cancellationToken);
-            StateObject.BufferReceiveSize = BitConverter.ToInt32(StateObject.BufferInit, 0);
-            StateObject.BufferReceive = new byte[StateObject.BufferReceiveSize];
+            _ = await SslStream.ReadAsync(this.Buffer.BufferInit, cts);
+            this.Buffer.BufferSize = BitConverter.ToInt32(this.Buffer.BufferInit, 0);
+            this.Buffer.BufferReceive = new byte[this.Buffer.BufferSize];
         }
 
-        private async Task ReceiveObject()
+        private async Task ReceiveObject(CancellationToken cts = default)
         {
             _totalBytesReceived = 0;
-            while (_totalBytesReceived < StateObject.BufferReceiveSize)
+            while (_totalBytesReceived < this.Buffer.BufferSize)
             {
-                var bytesRead = await _sslStream.ReadAsync(
-                    StateObject.BufferReceive.AsMemory(_totalBytesReceived,
-                    StateObject.BufferReceiveSize - _totalBytesReceived), _cancellationToken);
+                var bytesRead = await this.SslStream.ReadAsync(
+                    this.Buffer.BufferReceive.AsMemory(_totalBytesReceived,
+                    this.Buffer.BufferSize - _totalBytesReceived), cts);
 
                 if (bytesRead == 0) break;
                 _totalBytesReceived += bytesRead;
@@ -52,23 +45,16 @@ namespace ClientBlockChain.Entities
 
         private void DeserializeObject()
         {
-            try
-            {
-                if (this._totalBytesReceived != StateObject.BufferReceiveSize) return;
-                var jsonData = Encoding.UTF8.GetString(StateObject.BufferReceive, 0, _totalBytesReceived);
-                var resultObj = JsonSerializer.Deserialize<T>(jsonData);
-                OnReceived(resultObj!);
-            }
-            catch (JsonException ex)
-            {
-
-                throw new Exception($"Error deserializing object: {ex.Message}");
-            }
+            if (this._totalBytesReceived != this.Buffer.BufferSize) return;
+            var jsonData = Encoding.UTF8.GetString(this.Buffer.BufferReceive, 0, _totalBytesReceived);
+            var resultObj = JsonSerializer.Deserialize<T>(jsonData);
+            OnReceived(resultObj!);
         }
 
-        private async Task ExecuteWithTimeout(Func<Task> taskFunc, TimeSpan timeout)
+        private static async Task ExecuteWithTimeout(Func<Task> taskFunc,
+        TimeSpan timeout, CancellationToken cts = default)
         {
-            var timeoutTask = Task.Delay(timeout, _cancellationToken);
+            var timeoutTask = Task.Delay(timeout, cts);
             var task = taskFunc();
 
             if (await Task.WhenAny(task, timeoutTask) == timeoutTask)
@@ -76,15 +62,10 @@ namespace ClientBlockChain.Entities
 
             await task;
         }
-        
+
         private void OnReceived(T data)
         {
             Received?.Invoke(data);
-        }
-
-        private void OnCanceledOperation(CancellationTokenSource cancellationTokenSource)
-        {
-            CanceledOperation?.Invoke(cancellationTokenSource);
         }
     }
 }

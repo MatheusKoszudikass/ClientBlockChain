@@ -4,8 +4,8 @@ namespace ClientBlockchain.Interface;
 public interface IReceive<T>
 {
     Task ReceiveDataAsync(SslStream sslStream,
-        CancellationToken cancellationToken = default);
+        CancellationToken cts = default);
 
     Task ReceiveListDataAsync(SslStream sslStream,
-        CancellationToken cancellationToken = default);
+        CancellationToken cts = default);
 }

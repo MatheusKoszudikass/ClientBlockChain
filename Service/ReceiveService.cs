@@ -8,26 +8,24 @@ namespace ClientBlockchain.Service
 {
     public sealed class ReceiveService<T> : IReceive<T>
     {
-        private Receive<T>? _receive;
-        private ReceiveList<T>? _receiveList;
         private readonly ManagerTypeEventBus _managerTypeEventBus = new ManagerTypeEventBus();
 
-        public async Task ReceiveDataAsync(SslStream sslStream, CancellationToken cts)
+        public async Task ReceiveDataAsync(SslStream sslStream, CancellationToken cts = default)
         {
-            _receive = new Receive<T>(sslStream, cts);
+            var receive = new Receive<T>(sslStream);
 
-            _receive.Received += OnReceivedAtc;
+            receive.Received += OnReceivedAtc;
 
-            await _receive.ReceiveDataAsync();
+            await receive.ReceiveDataAsync(cts);
         }
 
-        public async Task ReceiveListDataAsync(SslStream sslStream, CancellationToken cts)
+        public async Task ReceiveListDataAsync(SslStream sslStream, CancellationToken cts = default)
         {
-            _receiveList = new ReceiveList<T>(sslStream, cts);
+            var receiveList = new ReceiveList<T>(sslStream);
 
-            _receiveList.ReceiveListAct += OnReceiveListAtc;
+            receiveList.ReceiveListAct += OnReceiveListAtc;
 
-            await _receiveList.ReceiveListAsync();
+            await receiveList.ReceiveListAsync(cts);
         }
 
         private void OnReceivedAtc(T data)

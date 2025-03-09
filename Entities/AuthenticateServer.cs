@@ -19,7 +19,7 @@ public sealed class AuthenticateServer
     private AuthenticateServer() { }
 
     public static async Task<SslStream> AuthenticateAsClient(Socket socket,
-    CancellationToken cts, int timeoutMilliseconds = 50000)
+    CancellationToken cts)
     {
 
         GlobalEventBusNewInstance();
@@ -33,7 +33,7 @@ public sealed class AuthenticateServer
         _sslStream = new SslStream(networkStream, false, ValidateServerCertificate!, null);
 
         var authenticateTask = _sslStream.AuthenticateAsClientAsync(ip, null, SslProtocols.Tls12, false);
-        if (await Task.WhenAny(authenticateTask, Task.Delay(timeoutMilliseconds)) == authenticateTask)
+        if (await Task.WhenAny(authenticateTask, Task.Delay(TimeSpan.FromMinutes(5), cts)) == authenticateTask)
         {
             await authenticateTask;
         }
@@ -54,7 +54,7 @@ public sealed class AuthenticateServer
 
     public void Stop()
     {
-        _sslStream!.Dispose();
+        _sslStream!.Close();
         ResetInstance();
     }
 

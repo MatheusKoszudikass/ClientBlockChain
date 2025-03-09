@@ -77,10 +77,10 @@ namespace ClientBlockchain.Handler
 
             var logEntryType = typeof(List<LogEntry>);
 
-            if (oldHandlers.TryGetValue(logEntryType, out var logEntryHandlers))
-            {
-                newInstance._handlers[logEntryType] = new List<object>(logEntryHandlers);
-            }
+            // if (oldHandlers.TryGetValue(logEntryType, out var logEntryHandlers))
+            // {
+            //     newInstance._handlers[logEntryType] = new List<object>(logEntryHandlers);
+            // }
             InstanceValue._handlers.Clear();
             _instance = newInstance;
         }
