@@ -15,7 +15,6 @@ public class StartClient : IStartClient
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
     private bool _isREconnecting = false;
-    private int _retryCount = 0;
 
     public StartClient(IClientMineService clientMineService,
     IIlogger<Listener> logger)
@@ -31,14 +30,20 @@ public class StartClient : IStartClient
         try
         {
             await Listener.Instance.Start();
+            await _logger.Log(Listener.Instance, "Connected to server", LogLevel.Information);
 
-            _ = _logger.Log(Listener.Instance, "Connected to server", LogLevel.Information);
+            await AuthenticateServer.AuthenticateAsClient(Listener.Instance.GetSocket());
 
             await _clientMineService.ClientMineInfoAsync(Listener.Instance);
         }
+        catch (IOException)
+        {
+            await _logger.Log(Listener.Instance!, "Server disconnected", LogLevel.Error);
+            await Reconnect();
+        }
         catch (Exception ex)
         {
-            _ = _logger.Log(Listener.Instance!, ex, ex.Message, LogLevel.Error);
+            await _logger.Log(Listener.Instance!, ex, ex.Message, LogLevel.Error);
             await Reconnect();
         }
     }
@@ -52,15 +57,13 @@ public class StartClient : IStartClient
 
         try
         {
-            Console.WriteLine($"Retry count reconnecting: {_retryCount}");
+            Console.WriteLine($"Count of pool threads: {ThreadPool.ThreadCount}");
             AuthenticateServer.Instance.Stop();
             Listener.Instance.Stop();
-            _retryCount++;
 
             GlobalEventBus.ResetInstance();
             _globalEventBus = GlobalEventBus.InstanceValue;
             _globalEventBus.Subscribe<Listener>(HandleDisconnection);
-
             _isREconnecting = false;
             await Connect();
         }

@@ -42,7 +42,6 @@ public class DataConfirmationService : IDataConfirmationService
                 _logger.Log(listener, "StartMonitoringAsync event", LogLevel.Event);
             };
 
-            await _dataMonitorService.StartDepencenciesAsync(listener);
             await _dataMonitorService.ReceiveDataAsync(cts);
             _listener = listener;
 
@@ -62,7 +61,6 @@ public class DataConfirmationService : IDataConfirmationService
 
             while (listener.Listening)
             {
-                await _dataMonitorService.StartDepencenciesAsync(listener);
                 await _dataMonitorService.ReceiveDataAsync(cts);
                 await Task.Delay(5000);
             }
@@ -81,7 +79,6 @@ public class DataConfirmationService : IDataConfirmationService
 
     private void GlobalEventBusNewInstance()
     {
-        _globalEventBus = GlobalEventBus.InstanceValue;
         _globalEventBus.Subscribe<string>(OnReceived);
     }
 }

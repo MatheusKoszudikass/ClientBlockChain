@@ -7,8 +7,6 @@ namespace ClientBlockchain.Entities;
 public class ClientMine()
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Socket? Socket { get; set; }
-    public SslStream? SslStream { get; set; }
     public string IpPublic { get; set; } = ConnectionHost.GetPublicIPAdress().Result;
     public string IpLocal { get; set; } = ConnectionHost.GetLocalIpAddress();
     public string Name { get; set; } = Environment.MachineName;

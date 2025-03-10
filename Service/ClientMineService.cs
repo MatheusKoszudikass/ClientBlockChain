@@ -25,15 +25,18 @@ public sealed class ClientMineService : IClientMineService
     {
         GlobalEventBusNewInstance();
         var clientMine = new ClientMine();
-        await _dataMonitorService.StartDepencenciesAsync(Listener.Instance, cts);
+        // await _dataMonitorService.StartDepencenciesAsync(Listener.Instance, cts);
+
+        if (!Listener.Instance.Listening || !AuthenticateServer.SslStream!.IsAuthenticated) return;
+
         await _dataMonitorService.SendDataAsync(clientMine, cts);
         _ = _ilogger.Log(clientMine, "ClientMineInfoAsync", LogLevel.Information);
+
     }
 
     private void GlobalEventBusNewInstance()
     {
         _globalEventBus = GlobalEventBus.InstanceValue;
-        _globalEventBus.Subscribe<ClientMine>(OnClientMineInfo);
     }
     private static void OnClientMineInfo(ClientMine data) => Console.WriteLine($"OnClientMineInfo{data.Name}. {data.Id}");
 }

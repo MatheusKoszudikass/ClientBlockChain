@@ -4,8 +4,6 @@ namespace ClientBlockchain.Interface;
 
 public interface IDataMonitorService<T>
 {
-    Task StartDepencenciesAsync(Listener listener,
-    CancellationToken cts = default);
     Task ReceiveDataAsync(CancellationToken cts = default);
     Task SendDataAsync(T data, CancellationToken cts = default);
     Task SendListDataAsync(List<T> listData,

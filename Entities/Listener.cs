@@ -72,8 +72,4 @@ public sealed class Listener
         this.Listening = false;
         ResetInstance();
     }
-
-    private void OnStatusClientConnected(Socket e) => StatusClientConnected?.Invoke(this, e);
-
-    public event EventHandler<Socket>? StatusClientConnected;
 }

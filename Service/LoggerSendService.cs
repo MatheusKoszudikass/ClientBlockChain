@@ -2,6 +2,7 @@ using ClientBlockChain.Entities;
 using ClientBlockchain.Handler;
 using ClientBlockchain.Interface;
 using ClientBlockchain.Entities;
+using ClientBlockChain.Entities.Enum;
 
 namespace ClientBlockchain.Service;
 
@@ -10,7 +11,6 @@ public class LoggerSendService : ILoggerSend
     private readonly List<LogEntry> _logEntries = [];
     private readonly ISend<LogEntry> _sendList;
     private readonly GlobalEventBus _globalEventBus;
-    private CancellationToken _cts = CancellationToken.None;
 
     public LoggerSendService(ISend<LogEntry> sendList,
      GlobalEventBus globalEventBus)
@@ -18,9 +18,10 @@ public class LoggerSendService : ILoggerSend
         _sendList = sendList;
         _globalEventBus = globalEventBus;
 
-        Task.Run(() => {
-        _globalEventBus.SubscribeList<LogEntry>(
-            async logEntries => await OnLogEntryReceived(logEntries));
+        Task.Run(() =>
+        {
+            _globalEventBus.SubscribeList<LogEntry>(
+                async logEntries => await OnLogEntryReceived(logEntries));
         });
     }
 
@@ -44,14 +45,22 @@ public class LoggerSendService : ILoggerSend
     {
         try
         {
-            if (_logEntries.Count >= 5)
+            if (_logEntries.Count >= 4)
             {
-                var sslStream = await AuthenticateServer.AuthenticateAsClient(Listener.Instance.GetSocket(), cts);
+                if (!Listener.Instance.Listening || !AuthenticateServer.SslStream!.IsAuthenticated) return;
+
                 await _sendList.SendListAsync(
-                    _logEntries, sslStream, _cts);
+                    _logEntries, AuthenticateServer.SslStream, cts);
+
+                Console.WriteLine($"Sent {_logEntries.Count} log entries.");
 
                 _logEntries.Clear();
             }
+        }
+        catch (IOException)
+        {
+            Console.WriteLine("Server disconnected");
+            _globalEventBus.Publish(Listener.Instance!);
         }
         catch (Exception ex)
         {

@@ -1,4 +1,3 @@
-using System.Net.Security;
 using System.Net.Sockets;
 using ClientBlockchain.Entities;
 using ClientBlockChain.Entities.Enum;
@@ -15,33 +14,7 @@ public class DataMonitorService<T>(
     private readonly IReceive<T>? _receive = receive;
     private readonly ISend<T>? _send = send;
     private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
-    private SslStream? _sslStream;
     private T? _data { get; set; } = default!;
-
-    public async Task StartDepencenciesAsync(Listener listener, CancellationToken cts)
-    {
-        try
-        {
-            GlobalEventBusNewInstance();
-            _sslStream = await AuthenticateServer.AuthenticateAsClient(Listener.Instance.GetSocket(), cts);
-
-            VerifyDependencies();
-            _ = _ilogger.Log(_data!, "StartDependenciesAsync", LogLevel.Information);
-        }
-        catch (SocketException ex)
-        {
-            _ = _ilogger.Log(_data!, ex, ex.Message + "StartDependenciesAsync socket", LogLevel.Error);
-            NotifyDisconnection();
-            throw new Exception("StartDependenciesAsync socket");
-        }
-        catch (Exception ex)
-        {
-            _ = _ilogger.Log(_data!, ex, ex.Message +
-                                     "StartDependenciesAsync exception", LogLevel.Error);
-            NotifyDisconnection();
-            throw new Exception("StartDependenciesAsync exception");
-        }
-    }
 
     public async Task ReceiveDataAsync(CancellationToken cts)
     {
@@ -54,19 +27,19 @@ public class DataMonitorService<T>(
             {
                 try
                 {
-                    _ = _ilogger.Log(_data!, "ReceiveDataAsync", LogLevel.Information);
-                    await _receive!.ReceiveDataAsync(_sslStream!, cts);
+                    await _ilogger.Log(_data!, "ReceiveDataAsync", LogLevel.Information);
+                    await _receive!.ReceiveDataAsync(AuthenticateServer.SslStream!, cts);
                     break;
                 }
                 catch (SocketException ex)
                 {
-                    _ = _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync socket", LogLevel.Error);
+                    await _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync socket", LogLevel.Error);
                     NotifyDisconnection();
                     throw new SocketException();
                 }
                 catch (Exception ex)
                 {
-                    _ = _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync exception", LogLevel.Error);
+                    await _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync exception", LogLevel.Error);
                     NotifyDisconnection();
                     throw new Exception("ReceiveDataAsync exception");
                 }
@@ -74,13 +47,13 @@ public class DataMonitorService<T>(
         }
         catch (SocketException ex)
         {
-            _ = _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync socket", LogLevel.Error);
+            await _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync socket", LogLevel.Error);
             NotifyDisconnection();
             throw new SocketException();
         }
         catch (Exception ex)
         {
-            _ = _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync exception", LogLevel.Error);
+            await _ilogger.Log(_data!, ex, ex.Message + "ReceiveDataAsync exception", LogLevel.Error);
             NotifyDisconnection();
             throw new Exception("ReceiveDataAsync exception");
         }
@@ -95,18 +68,18 @@ public class DataMonitorService<T>(
         {
             Console.WriteLine($"Send data: {data}");
 
-            _ = _ilogger.Log(data, "SendDataAsync", LogLevel.Information);
-            await _send!.SendAsync(data, _sslStream!, cts);
+            await _ilogger.Log(data, "SendDataAsync", LogLevel.Information);
+            await _send!.SendAsync(data, AuthenticateServer.SslStream!, cts);
         }
         catch (SocketException ex)
         {
-            _ = _ilogger.Log(_data!, ex, ex.Message + "SendDataAsync socket", LogLevel.Error);
+            await _ilogger.Log(_data!, ex, ex.Message + "SendDataAsync socket", LogLevel.Error);
             NotifyDisconnection();
             throw new SocketException();
         }
         catch (Exception ex)
         {
-            _ = _ilogger.Log(_data!, ex, ex.Message + "SendDataAsync exception", LogLevel.Error);
+            await _ilogger.Log(_data!, ex, ex.Message + "SendDataAsync exception", LogLevel.Error);
             NotifyDisconnection();
             throw new Exception("SendDataAsync exception");
         }
@@ -119,13 +92,13 @@ public class DataMonitorService<T>(
 
         try
         {
-            _ = _ilogger.Log(listData, "SendListDataAsync", LogLevel.Information);
-            await _send!.SendListAsync(listData, _sslStream!, cts);
+            await _ilogger.Log(listData, "SendListDataAsync", LogLevel.Information);
+            await _send!.SendListAsync(listData, AuthenticateServer.SslStream!, cts);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error sending data log: {ex.Message}");
-            _ = _ilogger.Log(listData, ex, "Error sending list data", LogLevel.Error);
+            await _ilogger.Log(listData, ex, "Error sending list data", LogLevel.Error);
             NotifyDisconnection();
             throw;
         }
@@ -136,11 +109,11 @@ public class DataMonitorService<T>(
         VerifyDependencies();
         try
         {
-            _ = _ilogger.Log(_data!, "StopMonitoring", LogLevel.Information);
+            _= _ilogger.Log(_data!, "StopMonitoring", LogLevel.Information);
         }
         catch (Exception ex)
         {
-            _ = _ilogger.Log(_data!, ex, ex.Message + "StopMonitoring exception", LogLevel.Error);
+            _= _ilogger.Log(_data!, ex, ex.Message + "StopMonitoring exception", LogLevel.Error);
             NotifyDisconnection();
             throw new Exception("StopMonitoring exception");
         }
@@ -148,7 +121,7 @@ public class DataMonitorService<T>(
 
     private void VerifyDependencies()
     {
-        if (Listener.Instance == null || _sslStream == null || _receive == null || _send == null)
+        if (Listener.Instance == null || AuthenticateServer.SslStream == null || _receive == null || _send == null)
         {
             _ilogger.Log(_data!, "Dependencies not initialized", LogLevel.Error);
             NotifyDisconnection();

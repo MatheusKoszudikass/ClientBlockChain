@@ -13,26 +13,26 @@ public sealed class AuthenticateServer
 {
     private static AuthenticateServer? _authenticateServer;
     public static AuthenticateServer Instance => _authenticateServer ??= new();
-    private static SslStream? _sslStream;
+    public static SslStream? SslStream {get; private set;}
     private static readonly IIlogger<SslStream>? _logger = new LoggerService<SslStream>();
     private static GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
     private AuthenticateServer() { }
 
     public static async Task<SslStream> AuthenticateAsClient(Socket socket,
-    CancellationToken cts)
+    CancellationToken cts = default)
     {
 
         GlobalEventBusNewInstance();
-        if (_sslStream != null && _sslStream.IsAuthenticated) return _sslStream;
+        if (SslStream != null && SslStream.IsAuthenticated) return SslStream;
 
         var networkStream = new NetworkStream(socket);
 
         var domain = await Dns.GetHostEntryAsync("monerokoszudikas.duckdns.org");
         var ip = domain.AddressList[0].ToString();
 
-        _sslStream = new SslStream(networkStream, false, ValidateServerCertificate!, null);
+        SslStream = new SslStream(networkStream, false, ValidateServerCertificate!, null);
 
-        var authenticateTask = _sslStream.AuthenticateAsClientAsync(ip, null, SslProtocols.Tls12, false);
+        var authenticateTask = SslStream.AuthenticateAsClientAsync(ip, null, SslProtocols.Tls12, false);
         if (await Task.WhenAny(authenticateTask, Task.Delay(TimeSpan.FromMinutes(5), cts)) == authenticateTask)
         {
             await authenticateTask;
@@ -44,8 +44,9 @@ public sealed class AuthenticateServer
         }
 
         ConfigureSslStream();
-        return _sslStream;
+        return SslStream;
     }
+
 
     private static void ResetInstance()
     {
@@ -54,13 +55,13 @@ public sealed class AuthenticateServer
 
     public void Stop()
     {
-        _sslStream!.Close();
+        SslStream!.Close();
         ResetInstance();
     }
 
     private static void ConfigureSslStream()
     {
-        _logger!.Log(_sslStream!, "ConfigureSslStream", LogLevel.Information);
+        _logger!.Log(SslStream!, "ConfigureSslStream", LogLevel.Information);
     }
 
     private static bool ValidateServerCertificate(

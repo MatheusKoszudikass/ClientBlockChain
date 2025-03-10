@@ -8,42 +8,42 @@ namespace ClientBlockchain.Handler
         private static GlobalEventBus? _instance;
         public static GlobalEventBus InstanceValue => _instance ??= new GlobalEventBus();
 
-        private readonly ConcurrentDictionary<Type, List<object>> _handlers = new();
+        private ConcurrentDictionary<Type, List<object>> Handlers = new();
 
         private GlobalEventBus() { }
 
         public void Subscribe<T>(Action<T> handler) where T : class
         {
             var type = typeof(T);
-            if (!_handlers.ContainsKey(type))
+            if (!Handlers.ContainsKey(type))
             {
-                _handlers[type] = [];
+                Handlers[type] = [];
             }
 
-            lock (_handlers[type])
+            lock (Handlers[type])
             {
-                _handlers[type].Add(handler);
+                Handlers[type].Add(handler);
             }
         }
 
         public void SubscribeList<T>(Action<List<T>> handlers) where T : class
         {
             var type = typeof(List<T>);
-            if (!_handlers.ContainsKey(type))
+            if (!Handlers.ContainsKey(type))
             {
-                _handlers[type] = [];
+                Handlers[type] = [];
             }
 
-            lock (_handlers[type])
+            lock (Handlers[type])
             {
-                _handlers[type].Add(handlers);
+                Handlers[type].Add(handlers);
             }
         }
 
         public void Publish<T>(T eventData) where T : class
         {
             var type = typeof(T);
-            if (!_handlers.TryGetValue(type, out var handlers)) return;
+            if (!Handlers.TryGetValue(type, out var handlers)) return;
             foreach (var handler in handlers.ToList())
             {
                 ((Action<T>)handler)(eventData);
@@ -53,7 +53,7 @@ namespace ClientBlockchain.Handler
         public void PublishList<T>(List<T> eventData) where T : class
         {
             var type = typeof(List<T>);
-            if (!_handlers.TryGetValue(type, out var handlers)) return;
+            if (!Handlers.TryGetValue(type, out var handlers)) return;
             foreach (var handler in handlers.ToList())
             {
                 ((Action<List<T>>)handler)(eventData);
@@ -63,25 +63,43 @@ namespace ClientBlockchain.Handler
         public void Unsubscribe<T>(Action<T> handler) where T : class
         {
             var type = typeof(T);
-            if (!_handlers.TryGetValue(type, out var handlers)) return;
+            if (!Handlers.TryGetValue(type, out var handlers)) return;
             lock (handlers)
             {
                 handlers.Remove(handler);
             }
         }
 
+        public void UnsubscribeList<T>(Action<List<T>> handler) where T : class
+        {
+            var type = typeof(List<T>);
+            if (!Handlers.TryGetValue(type, out var handlers)) return;
+
+            lock (handlers)
+            {
+                handlers.Remove(handler);
+            }
+
+        }
+
         public static void ResetInstance()
         {
-            var oldHandlers = InstanceValue._handlers;
+            var oldHandlers = InstanceValue.Handlers;
             var newInstance = new GlobalEventBus();
 
             var logEntryType = typeof(List<LogEntry>);
+            
+            if (oldHandlers.TryGetValue(logEntryType, out var logEntryHandlers))
+            {
+                var handlersToRemove = logEntryHandlers.Cast<Action<List<LogEntry>>>().ToList();
+                foreach (var handler in handlersToRemove)
+                {
+                    InstanceValue.UnsubscribeList(handler);
+                    newInstance.SubscribeList(handler);
+                }
+            }
 
-            // if (oldHandlers.TryGetValue(logEntryType, out var logEntryHandlers))
-            // {
-            //     newInstance._handlers[logEntryType] = new List<object>(logEntryHandlers);
-            // }
-            InstanceValue._handlers.Clear();
+            InstanceValue.Handlers.Clear();
             _instance = newInstance;
         }
 
