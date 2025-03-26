@@ -1,44 +1,40 @@
-using System.Net.Security;
-using ClientBlockchain.Entities;
+using ClientBlockChain.Handler;
 using ClientBlockChain.Entities;
-using ClientBlockchain.Handler;
-using ClientBlockchain.Interface;
+using ClientBlockChain.Interface;
+using System.Text.Json;
 
-namespace ClientBlockchain.Service
+namespace ClientBlockChain.Service;
+
+public sealed class ReceiveService : IReceive
 {
-    public sealed class ReceiveService<T> : IReceive<T>
+    private readonly ManagerTypeEventBus _managerTypeEventBus = new();
+
+    public async Task ReceiveDataAsync(CancellationToken cts = default)
     {
-        private readonly ManagerTypeEventBus _managerTypeEventBus = new ManagerTypeEventBus();
-
-        public async Task ReceiveDataAsync(SslStream sslStream, CancellationToken cts = default)
+        await Task.Run(async () =>
         {
-            var receive = new Receive<T>(sslStream);
+            while (!cts.IsCancellationRequested)
+            {
+                Console.WriteLine("Waiting for data...");
+                var receive = new Receive(AuthenticateServer.SslStream!);
 
-            receive.Received += OnReceivedAtc;
+                receive.ReceivedAct += OnReceivedAtc;
+                receive.OnReceivedListAct += OnReceiveListAtc;
 
-            await receive.ReceiveDataAsync(cts);
-        }
+                await receive.ReceiveDataAsync(cts);
+            }
+        }, cts);
+    }
 
-        public async Task ReceiveListDataAsync(SslStream sslStream, CancellationToken cts = default)
-        {
-            var receiveList = new ReceiveList<T>(sslStream);
+    private void OnReceivedAtc(JsonElement data)
+    {
+        Console.WriteLine($"Receive data: {data}");
+        _managerTypeEventBus.PublishEventType(data!);
+    }
 
-            receiveList.ReceiveListAct += OnReceiveListAtc;
-
-            await receiveList.ReceiveListAsync(cts);
-        }
-
-        private void OnReceivedAtc(T data)
-        {
-            Console.WriteLine($"Receive data: {data}");
-            _managerTypeEventBus.PublishEventType(data!);
-        }
-
-        private void OnReceiveListAtc(List<T> listData)
-        {
-            Console.WriteLine($"Receive data: {listData}");
-            var objectList = listData.Cast<object>().ToList();
-            _managerTypeEventBus.PublishEventType(objectList);
-        }
+    private void OnReceiveListAtc(List<JsonElement> listData)
+    {
+        Console.WriteLine($"Receive data: {listData}");
+        _managerTypeEventBus.PublishListEventType(listData!);
     }
 }

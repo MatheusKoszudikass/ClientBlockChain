@@ -1,11 +1,7 @@
-using System.Net.Security;
 
-namespace ClientBlockchain.Interface;
-public interface IReceive<T>
+namespace ClientBlockChain.Interface;
+
+public interface IReceive
 {
-    Task ReceiveDataAsync(SslStream sslStream,
-        CancellationToken cts = default);
-
-    Task ReceiveListDataAsync(SslStream sslStream,
-        CancellationToken cts = default);
+    Task ReceiveDataAsync(CancellationToken cts = default);
 }

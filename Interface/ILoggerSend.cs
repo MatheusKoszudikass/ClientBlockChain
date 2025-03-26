@@ -1,6 +1,6 @@
-namespace ClientBlockchain.Interface;
+namespace ClientBlockChain.Interface;
 
 public interface ILoggerSend
 {
-    Task SendLogEntriesAsync(CancellationToken cts = default);
+    // Task SendLogEntriesAsync(CancellationToken cts = default);
 }

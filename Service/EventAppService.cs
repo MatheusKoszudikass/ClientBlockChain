@@ -1,4 +1,4 @@
-using ClientBlockchain.Entities;
+using ClientBlockChain.Entities;
 using ClientBlockChain.Interface;
 
 namespace ClientBlockChain.Service;

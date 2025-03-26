@@ -1,11 +1,7 @@
-using System;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Net.Http;
-using System.Threading.Tasks;
 
-namespace ClientBlockchain.Connection
+namespace ClientBlockChain.Connection
 {
     public class ConnectionHost
     {
@@ -26,9 +22,9 @@ namespace ClientBlockchain.Connection
             Console.WriteLine($"IP público: {this.IPublic}");
         }
 
-        public int GetPort()
+        public static int GetPort()
         {
-            return checked((int)this.Port);
+            return checked((int)OpenPortFirewall.OpenPort());
         }
 
         public string GetConnectionHostIpLocal() 

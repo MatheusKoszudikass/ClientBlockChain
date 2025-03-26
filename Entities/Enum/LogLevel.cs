@@ -1,13 +1,12 @@
-namespace ClientBlockChain.Entities.Enum
+namespace ClientBlockChain.Entities.Enum;
+
+public enum LogLevel
 {
-    public enum LogLevel
-    {
-        Trace,
-        Debug,
-        Information,
-        Warning,
-        Error,
-        Critical,
-        Event
-    }
+    Trace,
+    Debug,
+    Information,
+    Warning,
+    Error,
+    Critical,
+    Event
 }

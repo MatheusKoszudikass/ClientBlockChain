@@ -1,12 +1,10 @@
-using System.Net.Security;
-
-namespace ClientBlockchain.Interface;
+namespace ClientBlockChain.Interface;
 
 public interface ISend<T>
 {
-    Task SendAsync(T data, SslStream sslStream,
-        CancellationToken cts = default);
+    Task SendAsync(T data,
+    CancellationToken cts = default);
 
-    Task SendListAsync(List<T> listData, SslStream sslStream,
+    Task SendListAsync(List<T> listData,
         CancellationToken cts = default);
 }

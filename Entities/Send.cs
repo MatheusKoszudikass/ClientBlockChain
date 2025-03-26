@@ -14,8 +14,8 @@ namespace ClientBlockChain.Entities
         public async Task SendAsync(T data, CancellationToken cts = default)
         {
 
-            await ExecuteWithTimeout(() => SendLengthPrefix(data!, false, cts), TimeSpan.FromMinutes(5), cts);
-            await ExecuteWithTimeout(() => SendObject(data!, cts), TimeSpan.FromMinutes(5), cts);
+            await ExecuteWithTimeout(() => SendLengthPrefix(data!, false, cts), TimeSpan.FromMinutes(1), cts);
+            await ExecuteWithTimeout(() => SendObject(data!, cts), TimeSpan.FromMinutes(1), cts);
 
             await _sslStream.FlushAsync(cts);
         }

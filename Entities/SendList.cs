@@ -1,9 +1,7 @@
 using System.Net.Security;
-using System.Net.Sockets;
 using System.Text.Json;
-using ClientBlockChain.Entities;
 
-namespace ClientBlockchain.Entities;
+namespace ClientBlockChain.Entities;
 
 public class SendList<T>(SslStream sslStream)
 {

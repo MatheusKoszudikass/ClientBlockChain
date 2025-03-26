@@ -1,27 +1,26 @@
-using ClientBlockchain.Entities;
+using ClientBlockChain.Handler;
+using ClientBlockChain.Entities;
 using ClientBlockChain.Entities.Enum;
-using ClientBlockchain.Handler;
-using ClientBlockChain.InstructionsSocket;
-using ClientBlockchain.Interface;
 using ClientBlockChain.Interface;
-using ClientBlockchain.Service;
+using ClientBlockChain.Util;
+using System.Net.Sockets;
+using System.Security.Authentication;
 
 namespace ClientBlockChain.Service;
 
 public class StartClient : IStartClient
 {
-    private readonly IClientMineService _clientMineService;
+    private readonly IClientMine _clientMineService;
     private readonly IIlogger<Listener> _logger;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
     private bool _isREconnecting = false;
 
-    public StartClient(IClientMineService clientMineService,
+    public StartClient(IClientMine clientMineService,
     IIlogger<Listener> logger)
     {
         _clientMineService = clientMineService;
         _logger = logger;
-
         _globalEventBus.Subscribe<Listener>(HandleDisconnection);
     }
 
@@ -30,11 +29,31 @@ public class StartClient : IStartClient
         try
         {
             await Listener.Instance.Start();
-            await _logger.Log(Listener.Instance, "Connected to server", LogLevel.Information);
 
             await AuthenticateServer.AuthenticateAsClient(Listener.Instance.GetSocket());
 
-            await _clientMineService.ClientMineInfoAsync(Listener.Instance);
+            await _logger.Log(Listener.Instance, "Connected to server", LogLevel.Information);
+            
+            await _clientMineService.ClientMineInfoAsync();
+        }
+        catch (AuthenticationException ex)
+        {
+            await _logger.Log(Listener.Instance!, ex,
+            $"Authentication server failed: {ex.Message}", LogLevel.Error);
+            await Reconnect();
+        }
+        catch (InvalidOperationException ex)
+        {
+            await _logger.Log(Listener.Instance!, ex, 
+            $"Trying to connect socket already connected "+
+            $"or some operation was invalid: {ex.Message}", LogLevel.Error);
+            await Reconnect();
+        }
+        catch (SocketException ex)
+        {
+            await _logger.Log(Listener.Instance!, ex, 
+            $"Error trying to access the socket: {ex.Message}", LogLevel.Error);
+            await Reconnect();
         }
         catch (IOException)
         {
@@ -57,7 +76,6 @@ public class StartClient : IStartClient
 
         try
         {
-            Console.WriteLine($"Count of pool threads: {ThreadPool.ThreadCount}");
             AuthenticateServer.Instance.Stop();
             Listener.Instance.Stop();
 
@@ -72,7 +90,6 @@ public class StartClient : IStartClient
             _semaphore.Release();
         }
     }
-
 
     private async void HandleDisconnection(Listener listener)
     {

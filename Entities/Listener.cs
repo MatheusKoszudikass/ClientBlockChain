@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace ClientBlockchain.Entities;
+namespace ClientBlockChain.Entities;
 
 public sealed class Listener
 {

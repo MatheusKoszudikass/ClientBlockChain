@@ -1,8 +1,7 @@
-using ClientBlockChain.Entities;
 using ClientBlockChain.Entities.Enum;
 
-namespace ClientBlockchain.Interface;
-public interface IIlogger<T>
+namespace ClientBlockChain.Interface;
+public interface IIlogger<in T>
 {
     Task Log(T data, Exception exception, string message, LogLevel level);
     Task Log(T data, string message, LogLevel level);

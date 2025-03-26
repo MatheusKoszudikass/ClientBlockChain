@@ -2,9 +2,8 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using ClientBlockchain.SystemOperation;
 
-namespace ClientBlockchain.Connection
+namespace ClientBlockChain.Connection
 {
     public class OpenPortFirewall
     {

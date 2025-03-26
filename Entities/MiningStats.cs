@@ -1,4 +1,4 @@
-namespace ClientBlockchain.Entities;
+namespace ClientBlockChain.Entities;
 
 public class MiningStats
 {

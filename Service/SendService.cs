@@ -1,40 +1,28 @@
-using System.Net.Security;
-using ClientBlockchain.Entities;
 using ClientBlockChain.Entities;
-using ClientBlockchain.Handler;
-using ClientBlockchain.Interface;
+using ClientBlockChain.Interface;
 
-namespace ClientBlockchain.Service
+namespace ClientBlockChain.Service;
+
+public class SendService<T> : ISend<T>
 {
-    public class SendService<T> : ISend<T>
+
+    public async Task SendAsync(T data,
+        CancellationToken cts = default)
     {
-        private readonly ManagerTypeEventBus _managerTypeEventBus = new();
+        var send = new Send<T>(AuthenticateServer.SslStream!);
 
-        public async Task SendAsync(T data, SslStream sslStream,
-            CancellationToken cts = default)
+        if (data is List<T> listData)
         {
-            var send = new Send<T>(sslStream);
-            send.SentAct += OnSendingAtc;
-
-            if(data is List<T> listData)
-            {
-                await send!.SendListAsync(listData, cts);
-            }
-            await send.SendAsync(data, cts);
+            await send!.SendListAsync(listData, cts);
         }
+        await send.SendAsync(data, cts);
+    }
 
-        public async Task SendListAsync(List<T> listData, SslStream sslStream,
-            CancellationToken cts = default)
-        {
-            var sendList = new SendList<T>(sslStream);
+    public async Task SendListAsync(List<T> listData,
+        CancellationToken cts = default)
+    {
+        var sendList = new SendList<T>(AuthenticateServer.SslStream!);
 
-            await sendList.SendListAsync(listData, cts);
-        }
-
-        private void OnSendingAtc(T data)
-        {
-            Console.WriteLine($"Send data: {data}");
-            _managerTypeEventBus.PublishEventType(data!);
-        }
+        await sendList.SendListAsync(listData, cts);
     }
 }

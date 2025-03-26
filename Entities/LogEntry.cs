@@ -1,9 +1,7 @@
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
-using ClientBlockchain.Connection;
-using ClientBlockChain.Entities.Enum;
-using ClientBlockChain.Ultil;
+using ClientBlockChain.Connection;
+using ClientBlockChain.Util;
 
 namespace ClientBlockChain.Entities;
 public class LogEntry

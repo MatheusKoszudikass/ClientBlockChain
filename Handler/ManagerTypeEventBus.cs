@@ -1,17 +1,23 @@
-using ClientBlockchain.Entities;
+using System.Net;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 using ClientBlockChain.Entities;
+using ClientBlockChain.Entities.Enum;
+using ClientBlockChain.Interface;
+using ClientBlockChain.Util;
 
-namespace ClientBlockchain.Handler;
+namespace ClientBlockChain.Handler;
 
-public class ManagerTypeEventBus()
+public class ManagerTypeEventBus
 {
-    private GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
+    private readonly GlobalEventBus _globalEventBus = GlobalEventBus.InstanceValue;
 
-    public void PublishEventType(object data)
+    public void PublishEventType(JsonElement data)
     {
-        GlobalEventBusNewInstance();
+        var obj = JsonElementConvert.ConvertToObject(data) ??
+         throw new ArgumentNullException(nameof(data));
 
-        switch (data)
+        switch (obj)
         {
             case ClientMine clientMine:
                 _globalEventBus.Publish(clientMine);
@@ -22,8 +28,14 @@ public class ManagerTypeEventBus()
             case LogEntry logEntry:
                 _globalEventBus.Publish(logEntry);
                 break;
-            case SendMessageDefault sendMessageDefault:
-                _globalEventBus.Publish(sendMessageDefault);
+            case ClientCommandMine clientCommandMine:
+                _globalEventBus.Publish(clientCommandMine);
+                break;
+            case ClientCommandLog clientCommandLog:
+                _globalEventBus.Publish(clientCommandLog);
+                break;
+            case HttpStatusCode httpStatusCode:
+                _globalEventBus.Publish(httpStatusCode);
                 break;
             case string message:
                 _globalEventBus.Publish(message);
@@ -33,34 +45,26 @@ public class ManagerTypeEventBus()
         }
     }
 
-    public void PublishListEventType<T>(List<T> listData)
+    public void PublishListEventType(List<JsonElement> listData)
     {
-        GlobalEventBusNewInstance();
-        if (listData.Count == 0)
-            throw new ArgumentException("List is empty", nameof(listData));
+        var obj = new List<object>();
 
-
-        switch (listData)
+        foreach (var item in listData)
         {
-            case List<ClientMine> clientMines:
-                _globalEventBus.PublishList(clientMines);
-                break;
-            case List<Listener> Listeners:
-                _globalEventBus.PublishList(Listeners);
-                break;
-            case List<LogEntry> logEntries:
-                _globalEventBus.PublishList(logEntries);
-                break;
-            case List<SendMessageDefault> SendMessageDefaults:
-                _globalEventBus.PublishList(SendMessageDefaults);
-                break;
-            case List<string> messages:
-                _globalEventBus.PublishList(messages);
-                break;
-            default:
-                throw new ArgumentException("Unsupported data type", nameof(listData));
+            obj.Add(JsonElementConvert.ConvertToObject(item));
+        }
+
+        if (obj.All(o => o is ClientMine))
+        {
+            _globalEventBus.Publish(obj.Cast<ClientMine>().ToList());
+        }
+        else if(obj.All(o => o is LogEntry))
+        {
+            _globalEventBus.Publish(obj.Cast<LogEntry>().ToList());
+        }
+        else if(obj.All(o => o is ClientCommandMine))
+        {
+            _globalEventBus.Publish(obj.Cast<ClientCommandMine>().ToList());
         }
     }
-
-    private void GlobalEventBusNewInstance() => _globalEventBus = GlobalEventBus.InstanceValue;
 }
