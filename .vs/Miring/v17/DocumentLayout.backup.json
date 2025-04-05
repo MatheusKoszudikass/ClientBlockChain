@@ -1,0 +1,68 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Project\\ClientBlockChain\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{292C3458-E41A-8991-B3FD-6EB284BA7023}|ClientBlockChain.csproj|d:\\project\\clientblockchain\\service\\miningmanagerservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{292C3458-E41A-8991-B3FD-6EB284BA7023}|ClientBlockChain.csproj|solutionrelative:service\\miningmanagerservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F65ED42C-F2B7-B707-68B0-6876904BDC3C}|..\\ServerBlockChain\\ServerBlockChain.csproj|d:\\project\\serverblockchain\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{292C3458-E41A-8991-B3FD-6EB284BA7023}|ClientBlockChain.csproj|d:\\project\\clientblockchain\\util\\interopxmrig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{292C3458-E41A-8991-B3FD-6EB284BA7023}|ClientBlockChain.csproj|solutionrelative:util\\interopxmrig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MiningManagerService.cs",
+              "DocumentMoniker": "D:\\Project\\ClientBlockChain\\Service\\MiningManagerService.cs",
+              "RelativeDocumentMoniker": "Service\\MiningManagerService.cs",
+              "ToolTip": "D:\\Project\\ClientBlockChain\\Service\\MiningManagerService.cs",
+              "RelativeToolTip": "Service\\MiningManagerService.cs",
+              "ViewState": "AgIAAFgAAAAAAAAAAAAowGAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-04T13:38:35.207Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "InteropXmrig.cs",
+              "DocumentMoniker": "D:\\Project\\ClientBlockChain\\Util\\InteropXmrig.cs",
+              "RelativeDocumentMoniker": "Util\\InteropXmrig.cs",
+              "ToolTip": "D:\\Project\\ClientBlockChain\\Util\\InteropXmrig.cs",
+              "RelativeToolTip": "Util\\InteropXmrig.cs",
+              "ViewState": "AgIAAFcAAAAAAAAAAAAswGAAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-04T15:15:58.337Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Project\\ServerBlockChain\\Program.cs",
+              "RelativeDocumentMoniker": "..\\ServerBlockChain\\Program.cs",
+              "ToolTip": "D:\\Project\\ServerBlockChain\\Program.cs",
+              "RelativeToolTip": "..\\ServerBlockChain\\Program.cs",
+              "ViewState": "AgIAAA0AAAAAAAAAAAAgwAQAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-04T13:30:50.656Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

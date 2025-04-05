@@ -19,11 +19,11 @@ internal static partial class Program
     static async Task Main(string[] args)
     {
 
-        // if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        // {
-        //     IntPtr handle = GetConsoleWindow();
-        //     if(handle != IntPtr.Zero) ShowWindow(handle, SW_HIDE);
-        // }
+        //if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        //{
+        //    IntPtr handle = GetConsoleWindow();
+        //    if(handle != IntPtr.Zero) ShowWindow(handle, SW_HIDE);
+        //}
 
         var serviceProvide = new ServiceCollection()
             .AddSingleton(GlobalEventBus.InstanceValue)
@@ -37,7 +37,7 @@ internal static partial class Program
             .AddSingleton(typeof(IIlogger<>), typeof(LoggerService<>))
             .AddSingleton<IReceive, ReceiveService>()
             .AddSingleton(typeof(ISend<>), typeof(SendService<>))
-            .AddTransient<IStartClient, StartClient>()
+            .AddTransient<IStartClient, StartClientService>()
             .BuildServiceProvider();
 
         _ = serviceProvide.GetRequiredService<ILoggerSend>();

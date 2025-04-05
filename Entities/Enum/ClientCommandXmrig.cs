@@ -7,5 +7,6 @@ public enum ClientCommandXmrig
     Running = 1,
     NotRunning = -2,
     NoValidConfig = 3,
-    Erro = 4
+    Erro = 4,
+    ErroLoadLib = 5
 }

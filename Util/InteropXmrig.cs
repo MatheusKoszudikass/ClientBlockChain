@@ -1,58 +1,138 @@
-
+using System.Reflection;
 using System.Runtime.InteropServices;
+using ClientBlockChain.Entities;
 using ClientBlockChain.Entities.Client.Enum;
 
 namespace ClientBlockChain.Util;
 
-public static partial class InteropXmrig
+public static class InteropXmrig
 {
-    [LibraryImport("libxmrig", EntryPoint = "xmrig_start")]
-    private static partial int XmrigStart(int argc, IntPtr argv);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int XmrigStartDelegate(int argc, IntPtr argv);
 
-    [LibraryImport("libxmrig", EntryPoint = "xmrig_start_uv")]
-    private static partial int XmringStartUv();
+    private static XmrigStartDelegate? _xmrigStart;
 
-    [LibraryImport("libxmrig", EntryPoint = "xmrig_status")]
-    private static partial int IsMiningStatus();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int XmrigStartUvDelegate();
 
-    [LibraryImport("libxmrig", EntryPoint = "xmrig_stop")]
-    private static partial int XmrigStop();
+    private static XmrigStartUvDelegate? _xmrigStartUv;
 
-    public static async Task<int> Start()
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void XmrigStopUvDelegate();
+
+    private static XmrigStopUvDelegate? _xmrigStopUv;
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int XmrigIsStatusMiningDelegate();
+
+    private static XmrigIsStatusMiningDelegate? _xmrigIsStatusMining;
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int XmrigStopDelegate();
+
+    private static XmrigStopDelegate? _xmrigStop;
+
+    private static IntPtr _handle;
+
+    private static bool Running { get; set; }
+
+    public static int Start()
     {
-        string[] args = ["xmrig", "--donate-level=1", "--no-color"];
+        if (Running) return (int)ClientCommandXmrig.Running;
 
-        IntPtr[] argvPtrs = new IntPtr[args.Length];
+        _handle = LibraryExternManager.Load();
 
-        for (int i = 0; i < args.Length; i++)
+        if (_handle == IntPtr.Zero)
+        {
+            Console.WriteLine($"Error loading xmrig library: {_handle}");
+            return 5;
+        }
+
+        _xmrigStart = Marshal.GetDelegateForFunctionPointer<XmrigStartDelegate>(
+            LibraryExternManager.GetLibraryAddress("xmrig_start"));
+
+        var args = new string[] { "" };
+        var argvPtrs = new IntPtr[args.Length];
+
+        for (var i = 0; i < args.Length; i++)
         {
             argvPtrs[i] = Marshal.StringToHGlobalAnsi(args[i]);
         }
 
-        IntPtr argv = Marshal.AllocHGlobal(IntPtr.Size * argvPtrs.Length);
-        Marshal.Copy(argvPtrs, 0, argv, argvPtrs.Length);
-
-        Console.WriteLine("Chamando xmrig_start...");
-        var result = XmrigStart(args.Length, argv);
-        Console.WriteLine($"Resultado: {result}");
-
-        foreach (IntPtr ptr in argvPtrs)
+        var argv = Marshal.AllocHGlobal(IntPtr.Size * argvPtrs.Length);
+        if (argv == IntPtr.Zero)
         {
-            Marshal.FreeHGlobal(ptr);
+            throw new InvalidOperationException("Failure by allocating memory to ARGV.");
         }
 
-        Marshal.FreeHGlobal(argv);
+        Marshal.Copy(argvPtrs, 0, argv, argvPtrs.Length);
 
-        await Task.FromResult(true);
+        try
+        {
+            Running = true;
+
+            return _xmrigStart(args.Length, argv);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error calling xmrig start: {ex.Message}");
+            return -1;
+        }
+        finally
+        {
+            foreach (var ptr in argvPtrs)
+            {
+                if (ptr != IntPtr.Zero) Marshal.FreeHGlobal(ptr);
+            }
+
+            if (argv != IntPtr.Zero) Marshal.FreeHGlobal(argv);
+        }
+    }
+
+    public static int StartUv()
+    {
+        Console.WriteLine($"Thread do libuv: {Environment.CurrentManagedThreadId}");
+        _xmrigStartUv = Marshal.GetDelegateForFunctionPointer<XmrigStartUvDelegate>(
+            LibraryExternManager.GetLibraryAddress("xmrig_start_uv"));
+
+        var result = _xmrigStartUv();
+
+        Console.WriteLine($"Result operation StartUv: {result}");
 
         return result;
     }
 
-    public static int StartUv() => XmringStartUv();
-    
+    public static void StopUv()
+    {
+        _xmrigStopUv = Marshal.GetDelegateForFunctionPointer<XmrigStopUvDelegate>(
+            LibraryExternManager.GetLibraryAddress("xmrig_stop_uv"));
+
+        _xmrigStopUv!();
+
+              LibraryExternManager.Free(_handle);
+
+        Running = false;
+        _handle = IntPtr.Zero;
+    }
+
     public static int IsStatusMining()
     {
-        return IsMiningStatus();
+        if (_handle == IntPtr.Zero) return (int)ClientCommandXmrig.NotRunning;
+        _xmrigIsStatusMining = Marshal.GetDelegateForFunctionPointer<XmrigIsStatusMiningDelegate>(
+            LibraryExternManager.GetLibraryAddress("xmrig_status"));
+
+        return _xmrigIsStatusMining!();
     }
-    public static int Stop() => XmrigStop();
+
+    public static int Stop()
+    {
+        if (!Running) return (int)ClientCommandXmrig.NotRunning;
+
+        _xmrigStop = Marshal.GetDelegateForFunctionPointer<XmrigStopDelegate>(
+            LibraryExternManager.GetLibraryAddress("xmrig_stop"));
+
+        var result = _xmrigStop();
+
+        return result;
+    }
 }

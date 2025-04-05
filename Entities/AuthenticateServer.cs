@@ -65,18 +65,6 @@ public class AuthenticateServer
         await send.SendAsync(toke);
     }
 
-    private static void OnReceivedHttpStatusCode(HttpStatusCode httpStatusCode)
-    {
-        if (httpStatusCode == HttpStatusCode.Unauthorized)
-        {
-            _globalEventBus.Publish(Listener.Instance);
-        }
-        if (httpStatusCode == HttpStatusCode.Forbidden)
-        {
-            _globalEventBus.Publish(Listener.Instance);
-        }
-    }
-
     private static bool ValidateCertificate(X509Chain chain, X509Certificate? certificate)
     {
         if (chain != null)

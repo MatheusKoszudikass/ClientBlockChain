@@ -14,8 +14,8 @@ public sealed class Receive(SslStream sslStream)
 
     public async Task ReceiveDataAsync(CancellationToken cts = default)
     {
-        await ExecuteWithTimeout(() => ReceiveLengthPrefix(cts), TimeSpan.FromMinutes(1), cts);
-        await ExecuteWithTimeout(() => ReceiveObject(cts), TimeSpan.FromMinutes(1), cts);
+        await ExecuteWithTimeout(() => ReceiveLengthPrefix(cts), TimeSpan.FromMinutes(5), cts);
+        await ExecuteWithTimeout(() => ReceiveObject(cts), TimeSpan.FromMinutes(5), cts);
 
         DeserializeObject();
     }
